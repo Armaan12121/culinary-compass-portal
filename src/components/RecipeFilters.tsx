@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CUISINES, DIETARY_TYPES } from "@/types";
 
 interface RecipeFiltersProps {
   onFilterChange: (filters: {
@@ -9,11 +10,9 @@ interface RecipeFiltersProps {
     dietaryTypes: string[];
     difficulty: string;
   }) => void;
-  availableCuisines: string[];
-  availableDietaryTypes: string[];
 }
 
-const RecipeFilters = ({ onFilterChange, availableCuisines, availableDietaryTypes }: RecipeFiltersProps) => {
+const RecipeFilters = ({ onFilterChange }: RecipeFiltersProps) => {
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [selectedDietaryTypes, setSelectedDietaryTypes] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState<string>("all");
@@ -62,7 +61,7 @@ const RecipeFilters = ({ onFilterChange, availableCuisines, availableDietaryType
       <div>
         <h3 className="font-playfair font-semibold mb-3 text-lg">Cuisines</h3>
         <div className="flex flex-wrap gap-2">
-          {availableCuisines.map((cuisine) => (
+          {CUISINES.map((cuisine) => (
             <Button
               key={cuisine}
               variant={selectedCuisines.includes(cuisine) ? "default" : "outline"}
@@ -83,7 +82,7 @@ const RecipeFilters = ({ onFilterChange, availableCuisines, availableDietaryType
       <div>
         <h3 className="font-playfair font-semibold mb-3 text-lg">Dietary Preferences</h3>
         <div className="flex flex-wrap gap-2">
-          {availableDietaryTypes.map((diet) => (
+          {DIETARY_TYPES.map((diet) => (
             <Button
               key={diet}
               variant={selectedDietaryTypes.includes(diet) ? "default" : "outline"}
