@@ -1,35 +1,11 @@
-
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const AuthLayout = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const { user, isLoading } = useAuth();
   const location = useLocation();
-
-  useEffect(() => {
-    // Set up auth state listener first
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user || null);
-        setIsLoading(false);
-      }
-    );
-
-    // Then check for existing session
-    async function getUser() {
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user || null);
-      setIsLoading(false);
-    }
-    getUser();
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
 
   if (isLoading) {
     return (

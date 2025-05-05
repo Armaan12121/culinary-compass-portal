@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { Json } from '@/integrations/supabase/types';
 
 interface AuthContextType {
   user: User | null;
@@ -39,20 +40,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .single();
             
             if (profile) {
-              // Convert the preferences to the proper type
-              const preferences = profile.preferences ? {
-                cuisines: Array.isArray(profile.preferences.cuisines) ? profile.preferences.cuisines : [],
-                dietaryRestrictions: Array.isArray(profile.preferences.dietaryRestrictions) 
-                  ? profile.preferences.dietaryRestrictions : [],
-                skillLevel: (profile.preferences.skillLevel === 'beginner' || 
-                              profile.preferences.skillLevel === 'intermediate' || 
-                              profile.preferences.skillLevel === 'advanced') 
-                            ? profile.preferences.skillLevel 
+              // Safely access preferences object with type checking
+              const preferencesObj = profile.preferences as { 
+                cuisines?: string[]; 
+                dietaryRestrictions?: string[]; 
+                skillLevel?: string 
+              } | null;
+
+              // Create a properly typed preferences object
+              const preferences = {
+                cuisines: Array.isArray(preferencesObj?.cuisines) ? preferencesObj.cuisines : [],
+                dietaryRestrictions: Array.isArray(preferencesObj?.dietaryRestrictions) 
+                  ? preferencesObj.dietaryRestrictions : [],
+                skillLevel: (preferencesObj?.skillLevel === 'beginner' || 
+                              preferencesObj?.skillLevel === 'intermediate' || 
+                              preferencesObj?.skillLevel === 'advanced') 
+                            ? preferencesObj.skillLevel 
                             : 'beginner'
-              } : {
-                cuisines: [],
-                dietaryRestrictions: [],
-                skillLevel: "beginner"
               };
               
               setUser({
@@ -88,20 +92,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single()
           .then(({ data: profile }) => {
             if (profile) {
-              // Convert the preferences to the proper type
-              const preferences = profile.preferences ? {
-                cuisines: Array.isArray(profile.preferences.cuisines) ? profile.preferences.cuisines : [],
-                dietaryRestrictions: Array.isArray(profile.preferences.dietaryRestrictions) 
-                  ? profile.preferences.dietaryRestrictions : [],
-                skillLevel: (profile.preferences.skillLevel === 'beginner' || 
-                              profile.preferences.skillLevel === 'intermediate' || 
-                              profile.preferences.skillLevel === 'advanced') 
-                            ? profile.preferences.skillLevel 
+              // Safely access preferences object with type checking
+              const preferencesObj = profile.preferences as { 
+                cuisines?: string[]; 
+                dietaryRestrictions?: string[]; 
+                skillLevel?: string 
+              } | null;
+
+              // Create a properly typed preferences object
+              const preferences = {
+                cuisines: Array.isArray(preferencesObj?.cuisines) ? preferencesObj.cuisines : [],
+                dietaryRestrictions: Array.isArray(preferencesObj?.dietaryRestrictions) 
+                  ? preferencesObj.dietaryRestrictions : [],
+                skillLevel: (preferencesObj?.skillLevel === 'beginner' || 
+                              preferencesObj?.skillLevel === 'intermediate' || 
+                              preferencesObj?.skillLevel === 'advanced') 
+                            ? preferencesObj.skillLevel 
                             : 'beginner'
-              } : {
-                cuisines: [],
-                dietaryRestrictions: [],
-                skillLevel: "beginner"
               };
               
               setUser({
@@ -136,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const { error, data } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {

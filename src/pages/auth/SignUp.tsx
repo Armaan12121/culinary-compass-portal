@@ -4,15 +4,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const SignUp = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
@@ -22,17 +21,14 @@ const SignUp = () => {
 
     try {
       await signUp(email, password, name);
-      toast({
-        title: "Account created!",
-        description: "Welcome to RecipeSage! You have successfully signed up."
+      toast.success("Account created!", {
+        description: "Please check your email to confirm your account."
       });
-      navigate("/");
+      navigate("/sign-in");
     } catch (error: any) {
       console.error("Error signing up:", error.message);
-      toast({
-        title: "Sign up failed",
-        description: error.message || "There was a problem creating your account.",
-        variant: "destructive",
+      toast.error("Sign up failed", {
+        description: error.message || "There was a problem creating your account."
       });
     } finally {
       setIsLoading(false);
@@ -44,7 +40,7 @@ const SignUp = () => {
       <div className="w-full max-w-md space-y-8 bg-white p-6 md:p-8 rounded-lg shadow-lg">
         <div className="text-center">
           <h1 className="text-3xl font-bold mt-6 mb-2 font-playfair">Create Account</h1>
-          <p className="text-muted-foreground">Sign up to start cooking with RecipeSage</p>
+          <p className="text-muted-foreground">Sign up to start cooking with Culinary Compass</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">

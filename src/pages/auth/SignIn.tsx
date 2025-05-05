@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const SignIn = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { signIn } = useAuth();
 
@@ -21,18 +21,22 @@ const SignIn = () => {
 
     try {
       await signIn(email, password);
-      toast({
-        title: "Welcome back!",
+      toast.success("Welcome back!", {
         description: "You have successfully signed in."
       });
       navigate("/");
     } catch (error: any) {
       console.error("Error signing in:", error.message);
-      toast({
-        title: "Sign in failed",
+      toast.error("Sign in failed", {
         description: error.message || "Please check your credentials and try again.",
-        variant: "destructive",
       });
+      
+      // Check if error is about email confirmation
+      if (error.message.includes("Email not confirmed")) {
+        toast.info("Please check your email", {
+          description: "You need to confirm your email address before signing in."
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -43,7 +47,7 @@ const SignIn = () => {
       <div className="w-full max-w-md space-y-8 bg-white p-6 md:p-8 rounded-lg shadow-lg">
         <div className="text-center">
           <h1 className="text-3xl font-bold mt-6 mb-2 font-playfair">Welcome Back</h1>
-          <p className="text-muted-foreground">Sign in to continue to RecipeSage</p>
+          <p className="text-muted-foreground">Sign in to continue to Culinary Compass</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -66,8 +70,7 @@ const SignIn = () => {
               <Link 
                 to="#" 
                 className="text-sm text-recipe-orange hover:underline"
-                onClick={() => toast({
-                  title: "Password Reset",
+                onClick={() => toast.info("Password Reset", {
                   description: "Password reset functionality will be available soon."
                 })}
               >
