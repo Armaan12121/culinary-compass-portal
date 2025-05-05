@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import FeaturedSection from "@/components/FeaturedSection";
@@ -7,8 +7,10 @@ import CategorySection from "@/components/CategorySection";
 import RecipeFilters from "@/components/RecipeFilters";
 import TestimonialSection from "@/components/TestimonialSection";
 import Footer from "@/components/Footer";
-import { mockRecipes } from "@/data/mockData";
 import { Recipe } from "@/types";
+import { getAllRecipes } from "@/services/recipeService";
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,9 +19,40 @@ const Index = () => {
     dietaryTypes: [] as string[],
     difficulty: "all",
   });
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [topRatedRecipes, setTopRatedRecipes] = useState<Recipe[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        setLoading(true);
+        const data = await getAllRecipes();
+        setRecipes(data);
+        
+        // Get top rated recipes
+        const sorted = [...data]
+          .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
+          .slice(0, 3);
+        setTopRatedRecipes(sorted);
+      } catch (error) {
+        console.error("Error fetching recipes:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load recipes. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecipes();
+  }, [toast]);
 
   // Filter recipes based on search query and filters
-  const filteredRecipes = mockRecipes.filter((recipe) => {
+  const filteredRecipes = recipes.filter((recipe) => {
     // Search filter
     if (
       searchQuery &&
@@ -50,11 +83,6 @@ const Index = () => {
     return true;
   });
 
-  // Get top rated recipes
-  const topRatedRecipes = [...mockRecipes]
-    .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-    .slice(0, 3);
-
   // Handle search input changes
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -79,7 +107,26 @@ const Index = () => {
           <RecipeFilters onFilterChange={handleFilterChange} />
         </div>
 
-        {filteredRecipes.length > 0 ? (
+        {loading ? (
+          <div className="container mx-auto px-4 md:px-6 py-8">
+            <div className="mb-8">
+              <Skeleton className="h-8 w-64 mb-2" />
+              <Skeleton className="h-4 w-96" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="rounded-lg overflow-hidden shadow">
+                  <Skeleton className="h-48 w-full" />
+                  <div className="p-4 space-y-2">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : filteredRecipes.length > 0 ? (
           <FeaturedSection
             title="Recipes For You"
             description={
@@ -104,7 +151,6 @@ const Index = () => {
           title="Top Rated Recipes"
           description="Loved by our community of home cooks"
           recipes={topRatedRecipes}
-          viewAllLink="#"
         />
 
         <TestimonialSection />

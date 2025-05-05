@@ -11,7 +11,9 @@ import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types";
 import RecipeCard from "@/components/RecipeCard";
-import { mockRecipes } from "@/data/mockData";
+import { getAllRecipes } from "@/services/recipeService";
+import { Recipe } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -23,11 +25,8 @@ const Profile = () => {
   const [email, setEmail] = useState("");
   const [updating, setUpdating] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState<string[]>([]);
-
-  // Filter recipes that the user has saved
-  const userSavedRecipes = mockRecipes.filter(recipe => 
-    savedRecipes.includes(recipe.id)
-  );
+  const [userSavedRecipes, setUserSavedRecipes] = useState<Recipe[]>([]);
+  const [loadingRecipes, setLoadingRecipes] = useState(true);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -51,15 +50,26 @@ const Profile = () => {
         }
 
         if (profile) {
+          // Convert the jsonb preferences to the expected TypeScript type
+          const preferences = profile.preferences ? {
+            cuisines: Array.isArray(profile.preferences.cuisines) ? profile.preferences.cuisines : [],
+            dietaryRestrictions: Array.isArray(profile.preferences.dietaryRestrictions) ? profile.preferences.dietaryRestrictions : [],
+            skillLevel: (profile.preferences.skillLevel === 'beginner' || 
+                          profile.preferences.skillLevel === 'intermediate' || 
+                          profile.preferences.skillLevel === 'advanced') 
+                        ? profile.preferences.skillLevel 
+                        : 'beginner'
+          } : {
+            cuisines: [],
+            dietaryRestrictions: [],
+            skillLevel: "beginner"
+          };
+          
           const userData: User = {
             id: profile.id,
             name: profile.full_name || "",
             email: session.session.user.email || "",
-            preferences: profile.preferences || {
-              cuisines: [],
-              dietaryRestrictions: [],
-              skillLevel: "beginner"
-            },
+            preferences: preferences,
             savedRecipes: []
           };
 
@@ -95,6 +105,37 @@ const Profile = () => {
 
     fetchUserProfile();
   }, [navigate, toast]);
+
+  // Fetch actual recipe data for saved recipes
+  useEffect(() => {
+    const fetchSavedRecipes = async () => {
+      if (savedRecipes.length === 0) {
+        setUserSavedRecipes([]);
+        setLoadingRecipes(false);
+        return;
+      }
+
+      try {
+        setLoadingRecipes(true);
+        const allRecipes = await getAllRecipes();
+        const filtered = allRecipes.filter(recipe => 
+          savedRecipes.includes(recipe.id)
+        );
+        setUserSavedRecipes(filtered);
+      } catch (error) {
+        console.error("Error fetching saved recipes:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load saved recipes.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingRecipes(false);
+      }
+    };
+
+    fetchSavedRecipes();
+  }, [savedRecipes, toast]);
 
   const handleSearch = (query: string) => {
     // Search functionality
@@ -205,7 +246,20 @@ const Profile = () => {
             </TabsContent>
             
             <TabsContent value="saved">
-              {userSavedRecipes.length > 0 ? (
+              {loadingRecipes ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="rounded-lg overflow-hidden shadow">
+                      <Skeleton className="h-48 w-full" />
+                      <div className="p-4 space-y-2">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-2/3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : userSavedRecipes.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {userSavedRecipes.map((recipe) => (
                     <RecipeCard key={recipe.id} recipe={recipe} />

@@ -26,7 +26,8 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
     .from('recipes')
     .select(`
       *,
-      ratings(*)
+      ratings(*),
+      recipe_ingredients(id, amount, unit, ingredient_id, ingredients(id, name))
     `)
     .eq('id', id)
     .single();
@@ -39,7 +40,17 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
     throw new Error('Failed to fetch recipe');
   }
 
-  return transformDbRecipeToRecipe(data);
+  // Process ingredients
+  const ingredients: Ingredient[] = data.recipe_ingredients?.map((item: any) => ({
+    name: item.ingredients?.name || "Unknown ingredient",
+    amount: item.amount,
+    unit: item.unit
+  })) || [];
+
+  const recipe = transformDbRecipeToRecipe(data);
+  recipe.ingredients = ingredients;
+  
+  return recipe;
 }
 
 // Function to save a recipe
@@ -68,8 +79,50 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'ratings' | 'averag
     throw new Error('Failed to save recipe');
   }
 
-  // Next, handle ingredients (assuming we have a separate function for this)
-  // For simplicity, we're not implementing this part yet
+  // Next, handle ingredients by inserting them into the recipe_ingredients table
+  if (recipe.ingredients && recipe.ingredients.length > 0) {
+    for (const ingredient of recipe.ingredients) {
+      // First check if the ingredient exists
+      let ingredientId = null;
+      const { data: existingIngredient } = await supabase
+        .from('ingredients')
+        .select('id')
+        .eq('name', ingredient.name)
+        .maybeSingle();
+      
+      if (existingIngredient) {
+        ingredientId = existingIngredient.id;
+      } else {
+        // Create the ingredient
+        const { data: newIngredient, error: ingredientError } = await supabase
+          .from('ingredients')
+          .insert({ name: ingredient.name })
+          .select()
+          .single();
+        
+        if (ingredientError) {
+          console.error('Error creating ingredient:', ingredientError);
+          continue;
+        }
+        
+        ingredientId = newIngredient.id;
+      }
+      
+      // Now add the recipe_ingredient relationship
+      const { error: recipeIngredientError } = await supabase
+        .from('recipe_ingredients')
+        .insert({
+          recipe_id: recipeData.id,
+          ingredient_id: ingredientId,
+          amount: ingredient.amount,
+          unit: ingredient.unit
+        });
+      
+      if (recipeIngredientError) {
+        console.error('Error saving recipe ingredient:', recipeIngredientError);
+      }
+    }
+  }
 
   return transformDbRecipeToRecipe(recipeData);
 }
@@ -83,7 +136,7 @@ function transformDbRecipeToRecipe(dbRecipe: any): Recipe {
     averageRating = sum / dbRecipe.ratings.length;
   }
   
-  // For now, we'll use an empty array for ingredients since we haven't implemented that part yet
+  // For now, we'll use an empty array for ingredients since we handle them separately
   const ingredients: Ingredient[] = [];
 
   return {
@@ -100,11 +153,11 @@ function transformDbRecipeToRecipe(dbRecipe: any): Recipe {
     ingredients: ingredients,
     instructions: dbRecipe.instructions,
     author_id: dbRecipe.author_id,
-    ratings: dbRecipe.ratings.map((r: any) => ({
+    ratings: dbRecipe.ratings ? dbRecipe.ratings.map((r: any) => ({
       userId: r.user_id,
       value: r.value,
       comment: r.comment
-    })),
+    })) : [],
     averageRating,
     created_at: dbRecipe.created_at,
     updated_at: dbRecipe.updated_at
@@ -155,4 +208,98 @@ export async function isRecipeSavedByUser(recipeId: string, userId: string): Pro
   }
 
   return !!data;
+}
+
+// Function to rate a recipe
+export async function rateRecipe(recipeId: string, userId: string, value: number, comment?: string): Promise<void> {
+  // Check if the user has already rated this recipe
+  const { data: existingRating } = await supabase
+    .from('ratings')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('recipe_id', recipeId)
+    .maybeSingle();
+  
+  if (existingRating) {
+    // Update existing rating
+    const { error } = await supabase
+      .from('ratings')
+      .update({ value, comment })
+      .eq('id', existingRating.id);
+      
+    if (error) {
+      console.error('Error updating rating:', error);
+      throw new Error('Failed to update recipe rating');
+    }
+  } else {
+    // Create new rating
+    const { error } = await supabase
+      .from('ratings')
+      .insert({
+        recipe_id: recipeId,
+        user_id: userId,
+        value,
+        comment
+      });
+      
+    if (error) {
+      console.error('Error creating rating:', error);
+      throw new Error('Failed to rate recipe');
+    }
+  }
+}
+
+// Function to get user's saved recipes
+export async function getUserSavedRecipes(userId: string): Promise<Recipe[]> {
+  const { data: savedRecipes, error: savedError } = await supabase
+    .from('saved_recipes')
+    .select('recipe_id')
+    .eq('user_id', userId);
+    
+  if (savedError) {
+    console.error('Error fetching saved recipes:', savedError);
+    throw new Error('Failed to fetch saved recipes');
+  }
+
+  if (!savedRecipes.length) return [];
+  
+  const recipeIds = savedRecipes.map(item => item.recipe_id);
+  
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(`
+      *,
+      ratings(*)
+    `)
+    .in('id', recipeIds);
+    
+  if (error) {
+    console.error('Error fetching saved recipe details:', error);
+    throw new Error('Failed to fetch saved recipe details');
+  }
+  
+  return data.map(transformDbRecipeToRecipe);
+}
+
+// Function to get ingredients for a recipe
+export async function getRecipeIngredients(recipeId: string): Promise<Ingredient[]> {
+  const { data, error } = await supabase
+    .from('recipe_ingredients')
+    .select(`
+      amount,
+      unit,
+      ingredients (id, name)
+    `)
+    .eq('recipe_id', recipeId);
+    
+  if (error) {
+    console.error('Error fetching recipe ingredients:', error);
+    throw new Error('Failed to fetch recipe ingredients');
+  }
+  
+  return data.map((item: any) => ({
+    name: item.ingredients?.name || "Unknown",
+    amount: item.amount,
+    unit: item.unit
+  }));
 }

@@ -17,6 +17,7 @@ const RecipeCard = ({ recipe }: RecipeCardProps) => {
   const { title, description, imageUrl, prepTime, cookTime, difficulty, cuisine, averageRating } = recipe;
   const [isSaved, setIsSaved] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isCheckingSaved, setIsCheckingSaved] = useState(true);
   const { toast } = useToast();
   const totalTime = prepTime + cookTime;
 
@@ -24,18 +25,22 @@ const RecipeCard = ({ recipe }: RecipeCardProps) => {
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        setUserId(data.session.user.id);
-        
-        // Check if this recipe is saved by the user
-        if (recipe.id) {
-          try {
-            const saved = await isRecipeSavedByUser(recipe.id, data.session.user.id);
-            setIsSaved(saved);
-          } catch (error) {
-            console.error("Error checking if recipe is saved:", error);
-          }
+      const uid = data.session?.user?.id || null;
+      setUserId(uid);
+      
+      // Check if this recipe is saved by the user
+      if (uid && recipe.id) {
+        setIsCheckingSaved(true);
+        try {
+          const saved = await isRecipeSavedByUser(recipe.id, uid);
+          setIsSaved(saved);
+        } catch (error) {
+          console.error("Error checking if recipe is saved:", error);
+        } finally {
+          setIsCheckingSaved(false);
         }
+      } else {
+        setIsCheckingSaved(false);
       }
     };
 
@@ -43,18 +48,18 @@ const RecipeCard = ({ recipe }: RecipeCardProps) => {
 
     // Listen for auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUserId(session?.user?.id || null);
+      (event, session) => {
+        const uid = session?.user?.id || null;
+        setUserId(uid);
         
-        if (session?.user && recipe.id) {
-          try {
-            const saved = await isRecipeSavedByUser(recipe.id, session.user.id);
-            setIsSaved(saved);
-          } catch (error) {
-            console.error("Error checking if recipe is saved:", error);
-          }
+        if (uid && recipe.id) {
+          isRecipeSavedByUser(recipe.id, uid)
+            .then(saved => setIsSaved(saved))
+            .catch(err => console.error("Error checking if recipe is saved:", err))
+            .finally(() => setIsCheckingSaved(false));
         } else {
           setIsSaved(false);
+          setIsCheckingSaved(false);
         }
       }
     );
@@ -64,7 +69,10 @@ const RecipeCard = ({ recipe }: RecipeCardProps) => {
     };
   }, [recipe.id]);
 
-  const handleSaveToggle = async () => {
+  const handleSaveToggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!userId) {
       toast({
         title: "Authentication required",
@@ -115,6 +123,7 @@ const RecipeCard = ({ recipe }: RecipeCardProps) => {
             isSaved ? "text-recipe-red" : ""
           }`}
           onClick={handleSaveToggle}
+          disabled={isCheckingSaved}
         >
           <Heart className={`h-4 w-4 ${isSaved ? "fill-recipe-red text-recipe-red" : "text-recipe-red"}`} />
         </Button>

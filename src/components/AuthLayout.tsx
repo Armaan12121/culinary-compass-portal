@@ -1,6 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const AuthLayout = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -8,13 +10,7 @@ const AuthLayout = () => {
   const location = useLocation();
 
   useEffect(() => {
-    async function getUser() {
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user || null);
-      setIsLoading(false);
-    }
-    getUser();
-
+    // Set up auth state listener first
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user || null);
@@ -22,13 +18,28 @@ const AuthLayout = () => {
       }
     );
 
+    // Then check for existing session
+    async function getUser() {
+      const { data } = await supabase.auth.getSession();
+      setUser(data.session?.user || null);
+      setIsLoading(false);
+    }
+    getUser();
+
     return () => {
       authListener.subscription.unsubscribe();
     };
   }, []);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Skeleton className="h-12 w-12 rounded-full mx-auto mb-4" />
+          <Skeleton className="h-4 w-24 mx-auto" />
+        </div>
+      </div>
+    );
   }
 
   // If the user is already authenticated, redirect to the home page
