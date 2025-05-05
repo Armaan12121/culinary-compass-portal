@@ -29,7 +29,7 @@ export const mockRecipes: Recipe[] = [
       "Bake for 12-15 minutes until the crust is golden and cheese is bubbly.",
       "Remove from oven, top with fresh basil leaves, drizzle with olive oil, and sprinkle with salt."
     ],
-    author: "Chef Marco",
+    author_id: "user1",
     ratings: [
       { userId: "user1", value: 5, comment: "Perfect recipe! Just like in Naples." },
       { userId: "user2", value: 4, comment: "Delicious and simple." }
@@ -68,7 +68,7 @@ export const mockRecipes: Recipe[] = [
       "Stir in Thai basil leaves and lime leaves just before serving.",
       "Serve hot with steamed jasmine rice."
     ],
-    author: "Chef Supatra",
+    author_id: "user2",
     ratings: [
       { userId: "user3", value: 5, comment: "Tastes like authentic Thai street food!" },
       { userId: "user4", value: 4, comment: "Delicious but quite spicy." },
@@ -112,7 +112,7 @@ export const mockRecipes: Recipe[] = [
       "Assemble bowls with quinoa as the base, then arrange vegetables, chickpeas, and avocado.",
       "Drizzle with tahini dressing and sprinkle with sesame seeds."
     ],
-    author: "Chef Olivia",
+    author_id: "user3",
     ratings: [
       { userId: "user6", value: 5, comment: "So tasty and filling!" },
       { userId: "user7", value: 5, comment: "Great balanced meal." },
@@ -161,7 +161,7 @@ export const mockRecipes: Recipe[] = [
       "Add the mushrooms and pearl onions, simmer for 10 more minutes.",
       "Adjust seasoning and serve hot with crusty bread or mashed potatoes."
     ],
-    author: "Chef Pierre",
+    author_id: "user4",
     ratings: [
       { userId: "user9", value: 5, comment: "Worth every minute of cooking time!" },
       { userId: "user10", value: 5, comment: "A perfect winter comfort food." }
@@ -206,7 +206,7 @@ export const mockRecipes: Recipe[] = [
       "Assemble bowls with rice as the base, then arrange tuna, cucumber, avocado, and edamame.",
       "Garnish with nori strips, sesame seeds, and sliced green onions."
     ],
-    author: "Chef Kenji",
+    author_id: "user5",
     ratings: [
       { userId: "user11", value: 5, comment: "So fresh and delicious!" },
       { userId: "user12", value: 4, comment: "Great flavors, but be sure to use very fresh tuna." }
@@ -245,7 +245,7 @@ export const mockRecipes: Recipe[] = [
       "Let cool for 1 minute, then run a knife around the edges and invert onto dessert plates.",
       "Serve immediately with ice cream or whipped cream if desired."
     ],
-    author: "Chef Sophie",
+    author_id: "user6",
     ratings: [
       { userId: "user13", value: 5, comment: "Perfect dessert for date night!" },
       { userId: "user14", value: 4, comment: "Delicious but watch the baking time carefully." },
