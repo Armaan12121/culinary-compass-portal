@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Recipe, Ingredient } from "@/types";
+import { Recipe, Ingredient, RecipeFilter } from "@/types";
 
 // Function to fetch all recipes
 export async function getAllRecipes(): Promise<Recipe[]> {
@@ -17,6 +17,45 @@ export async function getAllRecipes(): Promise<Recipe[]> {
   }
 
   // Transform the data to match our Recipe interface
+  return data.map(transformDbRecipeToRecipe);
+}
+
+// Function to fetch recipes with filtering
+export async function getFilteredRecipes(filter: RecipeFilter): Promise<Recipe[]> {
+  let query = supabase
+    .from('recipes')
+    .select(`
+      *,
+      ratings(*)
+    `);
+
+  // Apply filters
+  if (filter.cuisine) {
+    query = query.eq('cuisine', filter.cuisine);
+  }
+
+  if (filter.difficulty) {
+    query = query.eq('difficulty', filter.difficulty);
+  }
+
+  if (filter.dietaryTypes && filter.dietaryTypes.length > 0) {
+    // Filter for recipes that have ALL the specified dietary types
+    filter.dietaryTypes.forEach(type => {
+      query = query.contains('dietary_types', [type]);
+    });
+  }
+
+  if (filter.searchQuery) {
+    query = query.or(`title.ilike.%${filter.searchQuery}%,description.ilike.%${filter.searchQuery}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching filtered recipes:', error);
+    throw new Error('Failed to fetch recipes with filters');
+  }
+
   return data.map(transformDbRecipeToRecipe);
 }
 
@@ -125,6 +164,111 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'ratings' | 'averag
   }
 
   return transformDbRecipeToRecipe(recipeData);
+}
+
+// Function to update a recipe
+export async function updateRecipe(id: string, recipe: Partial<Recipe>): Promise<Recipe> {
+  const updateData: any = {};
+  
+  if (recipe.title) updateData.title = recipe.title;
+  if (recipe.description) updateData.description = recipe.description;
+  if (recipe.imageUrl) updateData.image_url = recipe.imageUrl;
+  if (recipe.prepTime) updateData.prep_time = recipe.prepTime;
+  if (recipe.cookTime) updateData.cook_time = recipe.cookTime;
+  if (recipe.servings) updateData.servings = recipe.servings;
+  if (recipe.difficulty) updateData.difficulty = recipe.difficulty;
+  if (recipe.cuisine) updateData.cuisine = recipe.cuisine;
+  if (recipe.dietaryTypes) updateData.dietary_types = recipe.dietaryTypes;
+  if (recipe.instructions) updateData.instructions = recipe.instructions;
+
+  const { data, error } = await supabase
+    .from('recipes')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating recipe:', error);
+    throw new Error('Failed to update recipe');
+  }
+
+  // If ingredients were provided, update them too
+  if (recipe.ingredients && recipe.ingredients.length > 0) {
+    // First delete existing ingredients
+    await supabase
+      .from('recipe_ingredients')
+      .delete()
+      .eq('recipe_id', id);
+
+    // Then add the new ones
+    for (const ingredient of recipe.ingredients) {
+      let ingredientId = null;
+      
+      // Check if the ingredient exists
+      const { data: existingIngredient } = await supabase
+        .from('ingredients')
+        .select('id')
+        .eq('name', ingredient.name)
+        .maybeSingle();
+      
+      if (existingIngredient) {
+        ingredientId = existingIngredient.id;
+      } else {
+        // Create the ingredient
+        const { data: newIngredient, error: ingredientError } = await supabase
+          .from('ingredients')
+          .insert({ name: ingredient.name })
+          .select()
+          .single();
+        
+        if (ingredientError) {
+          console.error('Error creating ingredient:', ingredientError);
+          continue;
+        }
+        
+        ingredientId = newIngredient.id;
+      }
+      
+      // Add the recipe_ingredient relationship
+      await supabase
+        .from('recipe_ingredients')
+        .insert({
+          recipe_id: id,
+          ingredient_id: ingredientId,
+          amount: ingredient.amount,
+          unit: ingredient.unit
+        });
+    }
+  }
+
+  return await getRecipeById(id) as Recipe;
+}
+
+// Function to delete a recipe
+export async function deleteRecipe(id: string): Promise<void> {
+  // First delete related records from recipe_ingredients
+  await supabase
+    .from('recipe_ingredients')
+    .delete()
+    .eq('recipe_id', id);
+    
+  // Then delete related records from ratings
+  await supabase
+    .from('ratings')
+    .delete()
+    .eq('recipe_id', id);
+    
+  // Finally delete the recipe
+  const { error } = await supabase
+    .from('recipes')
+    .delete()
+    .eq('id', id);
+    
+  if (error) {
+    console.error('Error deleting recipe:', error);
+    throw new Error('Failed to delete recipe');
+  }
 }
 
 // Helper function to transform database recipe to our Recipe interface
@@ -302,4 +446,40 @@ export async function getRecipeIngredients(recipeId: string): Promise<Ingredient
     amount: item.amount,
     unit: item.unit
   }));
+}
+
+// Function to get recipes by user ID
+export async function getUserRecipes(userId: string): Promise<Recipe[]> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(`
+      *,
+      ratings(*)
+    `)
+    .eq('author_id', userId);
+    
+  if (error) {
+    console.error('Error fetching user recipes:', error);
+    throw new Error('Failed to fetch user recipes');
+  }
+  
+  return data.map(transformDbRecipeToRecipe);
+}
+
+// Function to search recipes by title or description
+export async function searchRecipes(query: string): Promise<Recipe[]> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(`
+      *,
+      ratings(*)
+    `)
+    .or(`title.ilike.%${query}%,description.ilike.%${query}%`);
+    
+  if (error) {
+    console.error('Error searching recipes:', error);
+    throw new Error('Failed to search recipes');
+  }
+  
+  return data.map(transformDbRecipeToRecipe);
 }
