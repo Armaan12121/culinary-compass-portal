@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 skillLevel?: string 
               } | null;
 
-              // Create a properly typed preferences object
+              // Create a properly typed preferences object with proper type casting
               const preferences = {
                 cuisines: Array.isArray(preferencesObj?.cuisines) ? preferencesObj.cuisines : [],
                 dietaryRestrictions: Array.isArray(preferencesObj?.dietaryRestrictions) 
@@ -55,8 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 skillLevel: (preferencesObj?.skillLevel === 'beginner' || 
                               preferencesObj?.skillLevel === 'intermediate' || 
                               preferencesObj?.skillLevel === 'advanced') 
-                            ? preferencesObj.skillLevel 
-                            : 'beginner'
+                            ? preferencesObj.skillLevel as "beginner" | "intermediate" | "advanced"
+                            : "beginner" as const
               };
               
               setUser({
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 skillLevel?: string 
               } | null;
 
-              // Create a properly typed preferences object
+              // Create a properly typed preferences object with proper type casting
               const preferences = {
                 cuisines: Array.isArray(preferencesObj?.cuisines) ? preferencesObj.cuisines : [],
                 dietaryRestrictions: Array.isArray(preferencesObj?.dietaryRestrictions) 
@@ -107,8 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 skillLevel: (preferencesObj?.skillLevel === 'beginner' || 
                               preferencesObj?.skillLevel === 'intermediate' || 
                               preferencesObj?.skillLevel === 'advanced') 
-                            ? preferencesObj.skillLevel 
-                            : 'beginner'
+                            ? preferencesObj.skillLevel as "beginner" | "intermediate" | "advanced"
+                            : "beginner" as const
               };
               
               setUser({
@@ -150,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           full_name: fullName || '',
         },
+        emailRedirectTo: window.location.origin,
       },
     });
     
