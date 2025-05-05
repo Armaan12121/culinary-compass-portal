@@ -24,9 +24,11 @@ export interface Recipe {
   dietaryTypes: string[];
   ingredients: Ingredient[];
   instructions: string[];
-  author: string;
+  author_id?: string; // Changed from author to author_id to match Supabase
   ratings: Rating[];
   averageRating?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Ingredient {
